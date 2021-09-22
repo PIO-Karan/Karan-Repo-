@@ -1,0 +1,94 @@
+**Free                                                                   
+                                                                         
+     Ctl-Opt Option(*srcstmt:*nodebugio) BndDir('QC2LE' : 'MESSI/KARAN');
+     Ctl-Opt DftActGrp(*No);                                             
+                                                                         
+     //-------Procedure for writing data on web-------//                 
+                                                                         
+     Dcl-Pr WriteToWeb  ExtProc('QtmhWrStout');                          
+        datavar     char(65535)  Options(*varsize);                      
+        datavarlen  int(10)      const;                                  
+        ErrorCode   char(8000)   options(*varsize);                      
+     End-Pr;                                                             
+                                                                         
+     //-------Date structure used as a parameter for error code--//      
+                                                                         
+     Dcl-Ds  ErrDs   qualified;                                          
+        bytesprov    int(10)   inz(0);                                   
+        bytesavail   int(10)   inz(0);                                   
+     End-Ds;                                                             
+     
+     //-------Procedure to get the cont-type,req-method---//  
+                                                         
+     Dcl-Pr  GetEnv   Pointer ExtProc('getenv');              
+       *N   Pointer  Value   Options(*string);               
+     End-Pr;                                                  
+                                                         
+     //-------Copy book having the defualt err description--//
+                                                         
+     /COPY QSYSINC/QRPGLESRC,QUSEC                            
+                                                         
+     //-------Procedure to receive the data----------//       
+                                                         
+     Dcl-Pr ReadStdInput   ExtProc('QtmhRdStin');             
+        szRtnBuffer    char(65535)  Options(*VarSize);        
+        nBufLen        Int(10)      const;                    
+        nRtnLen        Int(10);                               
+        QUSEC                       Like(QUSEC);              
+     End-Pr;
+     
+     //-------Procedure for calling the system program to translate// 
+     //-------the format of the data-------------------------------// 
+                                                                 
+     Dcl-Pr Translate      ExtPgm('QDCXLATE');                        
+       *N  Packed(5:0)    const;                                     
+       *N  char(32766)    options(*varsize);                         
+       *N  char(10)       const;                                     
+     End-Pr;                                                          
+                                                                 
+     Dcl-s  RtnBuffer  Char(4096) Inz;                                
+     Dcl-s  RtnLen     Int(10);                                       
+     Dcl-Ds apiError   LikeDs(QUSEC) Inz;                             
+                                                                 
+     Dcl-c  CRLF  x'0d25';                                            
+     Dcl-s  Data  char(5000);                                         
+                                                                 
+     Dcl-s  URL        char(100);                                     
+     Dcl-s  Contenttyp char(100);
+     Dcl-s  ReqMethod  char(100);                                 
+                                                             
+     Dcl-s  EBCdata    char(32766) Inz;                           
+                                                             
+     DATA = 'Content-type: Text/html' + CRLF + CRLF ;             
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);                  
+                                                             
+     DATA = 'Hello Karan, welcome to IBM i web service' + '<br>'; 
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);                  
+                                                             
+     URL = %Str(GetEnv('REQUEST_URI'));                           
+     ReqMethod = %Str(GetEnv('REQUEST_METHOD'));                  
+                                                             
+     If ReqMethod  = 'POST';                                      
+        Contenttyp = %Str(GetEnv('CONTENT_TYPE'));                
+        ReadStdInput(RtnBuffer:%size(RtnBuffer):RtnLen:apiError); 
+                                                             
+        If Contenttyp = 'application/json';                       
+           EBCdata = %Trim(RtnBuffer);    
+           Translate(%len(%trim(EBCdata)) : EBCdata : 'QTCPEBC');
+        EndIf;                                                   
+                                                           
+     EndIf;                                                      
+                                                            
+     Data = 'URL:' + %Trim(URL)  +  '<br>' +                     
+            'ReqMethod:' + %Trim(ReqMethod) +  '<br>' +          
+            'Contenttype:' + %Trim(Contenttyp) + '<br>';         
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);                 
+                                                            
+     Data = 'Data : ' + %Trim(RtnBuffer) + '<br>';               
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);                 
+                                                            
+     Data = 'Converted Data : ' + %Trim(EBCdata);                
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);                 
+                                                            
+     *Inlr = *On;                                                
+     Return;                                                     
