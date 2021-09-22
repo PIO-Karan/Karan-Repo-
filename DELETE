@@ -1,0 +1,67 @@
+**Free                                    
+   Ctl-opt option(*srcstmt:*nodebugio);   
+   Ctl-opt dftactgrp(*no) actgrp(*caller);
+                                          
+   Dcl-s   MsgTxt      varchar(32740);    
+   Dcl-s   MsgLen      int(5);            
+   Dcl-s   ResponseMsg varchar(9999);     
+   Dcl-s   ResponseHdr varchar(2048);     
+   Dcl-s   ResponsePos packed(4);         
+   Dcl-s   RtndSqlCode char(5);           
+   Dcl-s   Header      char(500);         
+   Dcl-s   Body        char(200);         
+                                          
+   Dcl-s   Name        char(50) inz;      
+   Dcl-s   Email       char(100)inz;      
+   Dcl-s   Gender      char(10) inz;      
+   Dcl-s   Status      char(10) inz;      
+   Dcl-c   Url         const('https://gorest.co.in/public-api/users/1801');   
+                                                                           
+Dcl-c   Token       const('Bearer 8dd2061f0f59b1488f604c39f68e07edcd254cfb+
+                                  00c7866c5bd1a82112ebea80');              
+                                                                           
+ Dcl-pr system zoned(10:0) extproc('system');                              
+   szcmd pointer Value Options(*String);                                   
+ End-pr;                                                                   
+                                                                           
+//*******************                                                      
+//Main Program starts                                                      
+//*******************                                                      
+                                                                           
+Exec sql set option commit = *none;                                        
+                                                                           
+Exec sql CALL QCMDEXC('CHGJOB CCSID(37)');                                 
+Header      = '<httpHeader>'                                         +
+          '<header name="Authorization" value="'                  +   
+               %trim(Token) + '">'                                +   
+          '</header>'                                                +
+          '<header name="Content-Type" value="application/json">'+    
+          '</header>'                                                +
+          '</httpHeader>';                                            
+                                                                      
+Body = *blanks;                                                       
+                                                                      
+                                                                      
+Exec sql                                                              
+ Select Coalesce(Varchar(ResponseMsg,9999),' '),                      
+        Varchar(ResponseHttpHeader,1000) into :ResponseMsg,           
+                                              :ResponseHdr            
+ From Table(Systools.HttpDeleteClobVerbose(Trim(:Url),                
+                                         Trim(:Header)))              
+                                         as JsonResponse;             
+                                                       
+   Diagnostics();                         
+   if RtndSqlCode = *Blanks;              
+     Dsply 'OK';                         
+   EndIf;                                 
+                                         
+   *Inlr = *On;                           
+                                         
+   Dcl-proc Diagnostics ;                   
+                                         
+    Exec sql GET DIAGNOSTICS CONDITION 1   
+      :RtndSqlCode = DB2_RETURNED_SQLCODE, 
+      :MsgLen = MESSAGE_LENGTH,            
+      :MsgTxt = MESSAGE_TEXT;              
+                                         
+   End-proc ;                                                                      
