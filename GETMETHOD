@@ -1,0 +1,63 @@
+**Free                                                                   
+                                                                         
+     Ctl-Opt Option(*srcstmt:*nodebugio) BndDir('QC2LE' : 'MESSI/KARAN');
+     Ctl-Opt DftActGrp(*No);                                             
+                                                                         
+     //-------Procedure for writing data on web-------//                 
+                                                                         
+     Dcl-F GETPF1 Disk keyed Usage(*Input);                              
+                                                                         
+     //-------Procedure for writing data on web-------//                 
+                                                                         
+     Dcl-Pr WriteToWeb  ExtProc('QtmhWrStout');                          
+        datavar     char(65535)  Options(*varsize);                      
+        datavarlen  int(10)      const;                                  
+        ErrorCode   char(8000)   options(*varsize);                      
+     End-Pr;                                                             
+                                                                         
+     //-------Date structure used as a parameter for error code--//      
+     Dcl-Ds  ErrDs   qualified;                             
+        bytesprov    int(10)   inz(0);                      
+        bytesavail   int(10)   inz(0);                      
+     End-Ds;                                                
+                                                       
+     //-------Procedure to get the cont-type,req-method---//
+                                                       
+     Dcl-Pr  GetEnv   Pointer ExtProc('getenv');            
+       *N   Pointer  Value   Options(*string);             
+     End-Pr;                                                
+                                                       
+     Dcl-c  CRLF  x'0d25';                                  
+     Dcl-s  Data  char(5000);                               
+                                                       
+     Dcl-s  URL        char(100);                           
+     Dcl-s  Position   zoned(10);                           
+     Dcl-s  Parm       char(100);                           
+     Dcl-s  Id1        Like(ID);
+     
+     DATA = 'Content-type: Text/html' + CRLF + CRLF ;  
+     writetoweb(DATA: %len(%trim(DATA)): ErrDs);       
+                                                        
+     URL  = %Str(GetEnv('REQUEST_URI'));               
+     PARM = '/GETWEB/';                                
+     URL  = URL + '/GETWEB/';                          
+     Position =  %Int(%Scanr( '/' : URL ));            
+                                                        
+     InpId =  %Int(%Subst(Url : Position + 1 : 3 ));   
+                                                        
+     Chain InpId GEtPf1;                               
+     If %Found(GetPf1);                                
+                                                        
+       Data =  'Id    : ' + %Char(InpId) + '<Br>' +   
+                 'Name  : ' + Name + '<Br>';            
+       WriteToWeb(Data : %len(%Trim(Data)) : ErrDS) ; 
+                                                        
+      Else;     
+         Data = 'Entered record not found';              
+         WriteToWeb(Data : %len(%Trim(Data)) : ErrDS) ; 
+      EndIf;     
+      
+      *Inlr = *On;                                          
+       Return;                             
+                                            
+         Data = 'Entered record not found';             
