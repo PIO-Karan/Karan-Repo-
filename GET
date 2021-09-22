@@ -1,0 +1,59 @@
+**Free                                                           
+   Ctl-opt option(*srcstmt:*nodebugio);                          
+   Ctl-opt dftactgrp(*no) actgrp(*caller);                       
+                                                                 
+   Dcl-s MsgTxt varchar(32740);                                  
+   Dcl-s MsgLen int(5);                                          
+   Dcl-s ResponseMsg varchar(9999);                              
+   Dcl-s ResponseHdr varchar(1000);                              
+   Dcl-s ResponsePos packed(4);                                  
+   Dcl-s RtndSQLcode char(5);                                    
+   Dcl-s header Char(200);                                       
+                                                                 
+   Dcl-c Url const('https://gorest.co.in/public-api/users/1801');
+                                                                 
+   //******************                                          
+   //Main Program                                                
+   //******************                                          
+                                                                 
+   *inlr = *On;                                                  
+   Exec sql set option commit = *none;                             
+                                                                
+   Exec sql CALL QSYS2.QCMDEXC('CHGJOB CCSID(37)');                
+                                                                
+   header = '<httpHeader>' +                                       
+            '<header name="Content-Type" value="application/json">'
+                                   +                            
+            '</header>' +                                          
+            '</httpHeader>';                                       
+                                                                
+   Exec sql                                                        
+                                                                
+   Select Coalesce(Varchar(ResponseMsg,9999),' '),               
+                  Varchar(ResponseHttpHeader,1000)              
+    into :ResponseMsg,                                          
+         :ResponseHdr                                           
+    From Table(Systools.HttpGetClobVerbose(Trim(:Url),          
+                                           Trim(:header)))      
+                                           as InternalServices;
+    Diagnostics();                                        
+                                                      
+   If RtndSQLcode = *Blanks;                          
+     dsply 'Got the response with HttpGetClobVerbose';
+   Else;                                              
+     dsply 'Error';                                   
+   EndIf;                                             
+   
+   /*******************                             
+   /Diagnostics details                             
+   /*******************                             
+                                                 
+   Dcl-proc Diagnostics ;                        
+                                                 
+      Exec sql                                   
+           GET DIAGNOSTICS CONDITION 1           
+           :RtndSQLcode   = DB2_RETURNED_SQLCODE,
+           :MsgLen        = MESSAGE_LENGTH,      
+           :MsgTxt        = MESSAGE_TEXT;        
+                                                 
+   End-proc ;                                    
